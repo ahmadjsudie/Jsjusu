@@ -1,0 +1,138 @@
+-- Kaboos's Dead Rails Resource Duplication Script for Aim_Head123
+-- Designed for Delta Executor (Educational Purpose)
+
+-- Services
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+-- Settings
+local targetPlayer = "Ahmadalshurfat" -- Your username
+local duplicateDistance = 2 -- Distance to place duplicated resource (studs)
+local numberOfClones = 50 -- عدد النسخ المطلوب
+local buttonDebounce = 0.5 -- Delay between duplicate actions to avoid spam
+
+-- Validate Player
+if LocalPlayer.Name ~= targetPlayer then
+    warn("This script is only for Ahmadalshurfat!")
+    return
+end
+
+-- Create GUI for the "Copy" Button
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+screenGui.Name = "ResourceDuplicatorGUI"
+
+local copyButton = Instance.new("TextButton")
+copyButton.Size = UDim2.new(0, 100, 0, 50)
+copyButton.Position = UDim2.new(0.5, -50, 0.8, 0)
+copyButton.Text = "نسخ"
+copyButton.TextScaled = true
+copyButton.BackgroundTransparency = 0.5
+copyButton.BackgroundColor3 = Color3.new(0, 0.5, 1)
+copyButton.TextColor3 = Color3.new(1, 1, 1)
+copyButton.Visible = false -- Hidden until holding a resource
+copyButton.Parent = screenGui
+
+-- Variable to track the held resource
+local heldResource = nil
+
+-- Function to Check if Player is Holding a Resource
+local function checkHeldResource()
+    if not LocalPlayer.Character then return nil end
+
+    for _, tool in pairs(LocalPlayer.Character:GetChildren()) do
+        if tool:IsA("Tool") then
+            return tool
+        end
+    end
+
+    for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
+        if tool:IsA("Tool") then
+            return tool
+        end
+    end
+
+    return nil
+end
+
+-- Function to Duplicate the Held Resource
+local function duplicateResource(resource)
+    if not resource then return end
+
+    -- Get the player's position
+    local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+
+    local playerPos = humanoidRootPart.Position
+    local forwardVector = humanoidRootPart.CFrame.LookVector
+    local basePosition = playerPos + (forwardVector * duplicateDistance)
+
+    -- Create multiple duplicates of the resource
+    for i = 1, numberOfClones do
+        local newResource = resource:Clone()
+        newResource.Parent = Workspace
+
+        -- If it's a tool, place its handle in the world with a slight random offset
+        if newResource:IsA("Tool") then
+            local handle = newResource:FindFirstChild("Handle") or newResource:FindFirstChildWhichIsA("BasePart")
+            if handle then
+                local offset = Vector3.new(math.random(-5, 5), 0, math.random(-5, 5)) -- توزيع عشوائي
+                handle.Position = basePosition + offset
+                handle.Anchored = false
+                handle.CanCollide = true
+            end
+        end
+    end
+end
+
+-- Monitor Held Resources and Show/Hide Button
+game:GetService("RunService").Heartbeat:Connect(function()
+    local resource = checkHeldResource()
+    if resource and resource ~= heldResource then
+        heldResource = resource
+        copyButton.Visible = true
+    elseif not resource then
+        heldResource = nil
+        copyButton.Visible = false
+    end
+end)
+
+-- Handle Button Click to Duplicate Resource
+local lastClick = 0
+copyButton.MouseButton1Click:Connect(function()
+    if tick() - lastClick < buttonDebounce then return end
+    lastClick = tick()
+
+    if heldResource then
+        duplicateResource(heldResource)
+
+        -- Show notification
+        local notification = Instance.new("ScreenGui")
+        notification.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(0, 200, 0, 50)
+        frame.Position = UDim2.new(0.5, -100, 0.1, 0)
+        frame.BackgroundTransparency = 0.5
+        frame.BackgroundColor3 = Color3.new(0, 0, 0)
+        frame.Parent = notification
+
+        local textLabel = Instance.new("TextLabel")
+        textLabel.Size = UDim2.new(1, 0, 1, 0)
+        textLabel.Text = "تم نسخ المورد " .. numberOfClones .. " مرة! 📦"
+        textLabel.TextScaled = true
+        textLabel.TextColor3 = Color3.new(0, 1, 0)
+        textLabel.BackgroundTransparency = 1
+        textLabel.Parent = frame
+
+        wait(2)
+        notification:Destroy()
+    end
+end)
+
+-- Re-create GUI on Character Respawn
+LocalPlayer.CharacterAdded:Connect(function()
+    screenGui:Clone().Parent = LocalPlayer:WaitForChild("PlayerGui")
+end)
